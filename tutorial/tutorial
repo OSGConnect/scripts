@@ -8,7 +8,10 @@ import os
 import shutil
 import subprocess
 
-import git
+try:
+	import git
+except ImportError:
+	git = None
 
 def get_tutorial_dir(tutorial):
     """
@@ -137,8 +140,11 @@ def main():
         if tutorials[tutorial]['url'].startswith('file'):
             path = tutorials[tutorial]['url'][6:]
             shutil.copytree(path, tutorial_dir)
-        else:
+        elif git:
             git.Repo.clone_from(tutorials[tutorial]['url'], tutorial_dir)
+        else:
+            os.system('git clone "%s" "%s"' %
+                      (tutorials[tutorial]['url'], tutorial_dir))
         sys.stdout.write("Tutorial files installed in %s\n" % tutorial_dir)
     else:
         parser.print_help()
