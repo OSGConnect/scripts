@@ -19,15 +19,13 @@ def get_tutorial_dir(tutorial):
 	"""
 	Find first unused tutorial directory
 	"""
-	trial_dir = os.path.join(".", tutorial)
-	if not os.path.exists(trial_dir):
-		return trial_dir
-	postfix = 1
-	while True:
-	   test_dir = "%s.%d" % (trial_dir, postfix)
-	   if not os.path.exists(test_dir):
-		   return test_dir
-	   postfix += 1
+	base_dir = os.path.join(".", tutorial)
+	trial_dir = base_dir
+	postfix = 0
+	while os.path.exists(trial_dir):
+		postfix += 1
+		trial_dir = "%s.%d" % (base_dir, postfix)
+	return base_dir, trial_dir
 
 def get_tutorials():
 	"""
@@ -143,10 +141,9 @@ def main():
 			for key in tutorials:
 				sys.stderr.write("%s\n" % key)
 			sys.exit(1)
-		tutorial_dir = get_tutorial_dir(tutorial)
-		if os.path.exists(os.path.join(".", tutorial)):
-			sys.stdout.write("Directory %s exists, putting tutorial files "\
-							 "in %s\n" % (tutorial, tutorial_dir))
+		base_dir, tutorial_dir = get_tutorial_dir(tutorial)
+		if os.path.exists(base_dir):
+			sys.stdout.write("Directory %s exists! " % base_dir)
 		if tutorials[tutorial]['url'].startswith('file'):
 			path = tutorials[tutorial]['url'][6:]
 			shutil.copytree(path, tutorial_dir)
@@ -155,7 +152,7 @@ def main():
 		else:
 			os.system('git clone "%s" "%s"' %
 					  (tutorials[tutorial]['url'], tutorial_dir))
-		sys.stdout.write("Tutorial files installed in %s\n" % tutorial_dir)
+		sys.stdout.write("Tutorial files installed in %s.\n" % tutorial_dir)
 	else:
 		parser.print_help()
 		sys.exit(1)
