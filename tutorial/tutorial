@@ -6,12 +6,12 @@ import argparse
 import sys
 import os
 import shutil
-import subprocess
+import ConfigParser
 
 try:
-	import git
+    import git
 except ImportError:
-	git = None
+    git = None
 
 def get_tutorial_dir(tutorial):
     """
@@ -31,7 +31,7 @@ def get_tutorials():
     """
     Use github api to get a list of tutorials currently available
     """
-    (branding,suppress) = connect_info()
+    (branding, suppress) = connect_info()
     tutorials = {}
     if not suppress:
         # not suppressing OSG tutorials so we'll get it from github
@@ -64,19 +64,15 @@ def connect_info():
     """
     Get connect details from connect script
     """
-     
-    output = subprocess.Popen(['connect', 'shconfig'], stdout=subprocess.PIPE).communicate()[0]
-    if output == "":
-        sys.stderr.write("Can't get connect shconfig info\n")
-        sys.exit(1)
-    branding = ""
+
+    config = ConfigParser.RawConfigParser()
+    config.read('/etc/ciconnect/config.ini')
+    branding = ''
     suppress = False
-    for line in output.split("\n"):
-        if line.split('=')[0] == 'connect_brand':
-            branding = line.split('=')[1].replace("'", "")
-        if line.split('=')[0] == 'suppress_git_tutorials':
-            suppress = bool(line.split('=')[1]).replace("'", "")
-    branding='duke'
+    if config.has_section('connect'):
+        branding = config.get('connect', 'brand')
+    if config.has_section('tutorial'):
+        suppress = config.getboolean('tutorial', 'suppress_git')
     return (branding, suppress)
 
 def main():
