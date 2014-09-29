@@ -13,6 +13,9 @@ try:
 except ImportError:
 	git = None
 
+# We may augment this in runtime
+ConfigFiles = ['/etc/ciconnect/config.ini']
+
 class mutableobject(object): pass
 
 def get_tutorial_dir(tutorial):
@@ -74,7 +77,8 @@ def connect_info():
 	"""
 
 	config = ConfigParser.RawConfigParser()
-	config.read('/etc/ciconnect/config.ini')
+	for fn in ConfigFiles:
+		config.read(file)
 	simple = mutableobject()
 	simple.branding = ''
 	simple.github_orgs = ['osgconnect']
@@ -99,6 +103,13 @@ def main():
 	"""
 	Run script and try to get and install correct tutorial files
 	"""
+
+	# Augment ConfigFiles if we can
+	base = os.path.dirname(sys.argv[0])
+	if base.endswith('/bin'):
+		base = os.path.dirname(base)
+	ConfigFiles.append(os.path.join(base, 'ciconnect.ini'))
+	ConfigFiles.append(os.path.join(base, 'etc', 'ciconnect.ini'))
 
 	parser = argparse.ArgumentParser(description='Install tutorial files.')
 	parser.add_argument('--list', dest='list', action='store_true',
