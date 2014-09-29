@@ -78,7 +78,7 @@ def connect_info():
 
 	config = ConfigParser.RawConfigParser()
 	for fn in ConfigFiles:
-		config.read(file)
+		config.read(fn)
 	simple = mutableobject()
 	simple.branding = ''
 	simple.github_orgs = ['osgconnect']
