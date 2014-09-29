@@ -112,17 +112,24 @@ def main():
 		  "get info on a specified tutorial, or install the specified tutorial respectively"
 	parser.add_argument('cmd', nargs='*', help=txt, default=None)
 	args = parser.parse_args(sys.argv[1:])
-	# list tutorials
-	if (args.cmd != [] and args.cmd[0] == 'list') or args.list:
-		tutorials = get_tutorials()
-		sys.stdout.write("Currently available tutorials: \n")
+
+	def list():
 		longest = max([len(name) for name in tutorials])
 		longest += 2
 		for tutorial in sorted(tutorials.keys()):
 			description = tutorials[tutorial]['description']
 			dots = '.' * (longest - len(tutorial))
 			sys.stdout.write("%s %s %s\n" % (tutorial, dots, description))
+		sys.stdout.write('\n')
+		sys.stdout.write('Enter "tutorial name-of-tutorial" to clone and try out a tutorial.\n')
 		return 0
+
+	# list tutorials
+	if (args.cmd != [] and args.cmd[0] == 'list') or args.list:
+		tutorials = get_tutorials()
+		sys.stdout.write("Currently available tutorials: \n")
+		list()
+
 	# provide info on a given tutorial
 	elif (args.cmd != [] and args.cmd[0] == 'info') or args.info:
 		tutorials = get_tutorials()
@@ -133,13 +140,12 @@ def main():
 		if tutorial not in tutorials:
 			sys.stderr.write("Tutorial %s not found, available tutorials "
 							 "are:\n" % tutorial)
-			for key in tutorials:
-				sys.stderr.write("%s\n" % key)
+			list()
 			return 1
 		else:
-			sys.stdout.write("%s - %s\n" % (tutorial, 
-			                                tutorials[tutorial]['description']))
+			list()
 			return 0
+
 	# install tutorial
 	elif (args.cmd != []) or args.install:
 		if args.cmd != []:
@@ -150,15 +156,18 @@ def main():
 		if tutorial not in tutorials:
 			sys.stderr.write("Tutorial %s not found, available tutorials "
 							 "are:\n" % tutorial)
-			for key in tutorials:
-				sys.stderr.write("%s\n" % key)
+			list()
 			return 1
 		base_dir, tutorial_dir = get_tutorial_dir(tutorial)
+		sys.stdout.write('Working...\n')
 		if os.path.exists(base_dir):
 			sys.stdout.write("Directory %s exists! " % base_dir)
 		if tutorials[tutorial]['url'].startswith('file'):
 			path = tutorials[tutorial]['url'][6:]
-			shutil.copytree(path, tutorial_dir)
+			try:
+				shutil.copytree(path, tutorial_dir)
+			except shutil.Error:
+				pass # ?!#
 		elif git:
 			git.Repo.clone_from(tutorials[tutorial]['url'], tutorial_dir)
 		else:
