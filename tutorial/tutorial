@@ -122,7 +122,7 @@ def main():
 			description = tutorials[tutorial]['description']
 			dots = '.' * (longest - len(tutorial))
 			sys.stdout.write("%s %s %s\n" % (tutorial, dots, description))
-		sys.exit(0)
+		return 0
 	# provide info on a given tutorial
 	elif (args.cmd != [] and args.cmd[0] == 'info') or args.info:
 		tutorials = get_tutorials()
@@ -135,11 +135,11 @@ def main():
 							 "are:\n" % tutorial)
 			for key in tutorials:
 				sys.stderr.write("%s\n" % key)
-			sys.exit(1)
+			return 1
 		else:
 			sys.stdout.write("%s - %s\n" % (tutorial, 
 			                                tutorials[tutorial]['description']))
-			sys.exit(0)
+			return 0
 	# install tutorial
 	elif (args.cmd != []) or args.install:
 		if args.cmd != []:
@@ -152,7 +152,7 @@ def main():
 							 "are:\n" % tutorial)
 			for key in tutorials:
 				sys.stderr.write("%s\n" % key)
-			sys.exit(1)
+			return 1
 		base_dir, tutorial_dir = get_tutorial_dir(tutorial)
 		if os.path.exists(base_dir):
 			sys.stdout.write("Directory %s exists! " % base_dir)
@@ -167,7 +167,7 @@ def main():
 		sys.stdout.write("Tutorial files installed in %s.\n" % tutorial_dir)
 	else:
 		parser.print_help()
-		sys.exit(1)
+		return 1
 
 if __name__ == '__main__':
-	main()
+	sys.exit(main())
