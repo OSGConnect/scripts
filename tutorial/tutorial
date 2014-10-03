@@ -123,7 +123,7 @@ def main():
 	parser.add_argument('cmd', nargs='*', help=txt, default=None)
 	args = parser.parse_args(sys.argv[1:])
 
-	def list():
+	def listtutorials():
 		longest = max([len(name) for name in tutorials])
 		longest += 2
 		for tutorial in sorted(tutorials.keys()):
@@ -138,7 +138,7 @@ def main():
 	if (args.cmd != [] and args.cmd[0] == 'list') or args.list:
 		tutorials = get_tutorials()
 		sys.stdout.write("Currently available tutorials: \n")
-		list()
+		listtutorials()
 
 	# provide info on a given tutorial
 	elif (args.cmd != [] and args.cmd[0] == 'info') or args.info:
@@ -150,10 +150,10 @@ def main():
 		if tutorial not in tutorials:
 			sys.stderr.write("Tutorial %s not found, available tutorials "
 							 "are:\n" % tutorial)
-			list()
+			listtutorials()
 			return 1
 		else:
-			list()
+			listtutorials()
 			return 0
 
 	# install tutorial
@@ -166,7 +166,7 @@ def main():
 		if tutorial not in tutorials:
 			sys.stderr.write("Tutorial %s not found, available tutorials "
 							 "are:\n" % tutorial)
-			list()
+			listtutorials()
 			return 1
 		base_dir, tutorial_dir = get_tutorial_dir(tutorial)
 		sys.stdout.write('Working...\n')
