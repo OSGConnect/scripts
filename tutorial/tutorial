@@ -186,8 +186,10 @@ def main():
 			listtutorials()
 			return 1
 		base_dir, tutorial_dir = get_tutorial_dir(tutorial)
-		branches = tutorial_branches(config, tutorials[tutorial]['branches_url'])
-		print branches
+		try:
+			branches = tutorial_branches(config, tutorials[tutorial]['branches_url'])
+		except KeyError:
+			branches = []
 		branch = None
 		if config.branding in branches:
 			branch = config.branding
