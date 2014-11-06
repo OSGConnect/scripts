@@ -114,7 +114,7 @@ def connect_info():
 
 	return simple
 
-def main():
+def main(args):
 	"""
 	Run script and try to get and install correct tutorial files
 	"""
@@ -138,17 +138,12 @@ def main():
 
 	config = connect_info()
 
-	parser = argparse.ArgumentParser(description='Install tutorial files.')
-	parser.add_argument('--list', dest='list', action='store_true',
-						default=False, help='List available tutorials')
-	parser.add_argument('--info', dest='info', 
-						default=None, nargs=1, help='Print info on specified tutorial')
-	parser.add_argument('--install', dest='install', 
-						default=None, nargs=1, help='Install files for specified tutorial')
-	txt = "should be either list, info, or tutorial name to list available tutorials," \
-		  "get info on a specified tutorial, or install the specified tutorial respectively"
-	parser.add_argument('cmd', nargs='*', help=txt, default=None)
-	args = parser.parse_args(sys.argv[1:])
+	def usage(fp=sys.stderr):
+		p = os.path.basename(sys.argv[0])
+		print >>fp, 'usage: %s list                 - show available tutorials' % p
+		print >>fp, '       %s info <tutorial-name> - show details of a tutorial' % p
+		print >>fp, '       %s <tutorial-name>      - set up a tutorial' % p
+		return 2
 
 	def listtutorials():
 		longest = max([len(name) for name in tutorials])
@@ -161,43 +156,46 @@ def main():
 		sys.stdout.write('Enter "tutorial name-of-tutorial" to clone and try out a tutorial.\n')
 		return 0
 
-	# list tutorials
-	if (args.cmd != [] and args.cmd[0] == 'list') or args.list:
+	if not args:
+		usage(fp=sys.stdout)
+		print
+		args = ('list',)
+
+	args = list(args)
+	cmd = args.pop(0)
+
+	if cmd == 'list':
 		tutorials = get_tutorials(config)
 		sys.stdout.write("Currently available tutorials: \n")
 		listtutorials()
+		return 0
 
 	# provide info on a given tutorial
-	elif (args.cmd != [] and args.cmd[0] == 'info') or args.info:
+	if cmd == 'info':
 		tutorials = get_tutorials(config)
-		if len(args.cmd) > 1:
-			tutorial = args.cmd[1]
-		else:
-			tutorial = args.info[0]
-		if tutorial not in tutorials:
-			sys.stderr.write("Tutorial %s not found, available tutorials "
-							 "are:\n" % tutorial)
-			listtutorials()
-			return 1
-		else:
-			listtutorials()
-			return 0
+		for t in args:
+			if t not in tutorials:
+				sys.stderr.write("Tutorial %s not found. Available tutorials are:\n" % tutorial)
+				listtutorials()
+				return 10
+
+		for t in args:
+			print 'Tutorial %s:' % t
+			print tutorials[t]['description']
+		return 0
 
 	# install tutorial
-	elif (args.cmd != []) or args.install:
-		if args.cmd != []:
-			tutorial = args.cmd[0] 
-		elif args.install != []:
-			tutorial = args.install[0]
+	else:
+		tutorial = cmd
 		tutorials = get_tutorials(config)
 		if tutorial not in tutorials:
-			sys.stderr.write("Tutorial %s not found, available tutorials "
-							 "are:\n" % tutorial)
+			sys.stderr.write("Tutorial %s not found. Available tutorials are:\n" % tutorial)
 			listtutorials()
-			return 1
+			return 20
+
 		base_dir, tutorial_dir = get_tutorial_dir(tutorial)
 		branches = tutorial_branches(config, tutorials[tutorial]['branches_url'])
-		print branches
+		#print branches
 		branch = None
 		if config.branding in branches:
 			branch = config.branding
@@ -207,6 +205,7 @@ def main():
 			sys.stdout.write('Installing %s (master)...\n' % tutorial)
 		if os.path.exists(base_dir):
 			sys.stdout.write("Directory %s exists! " % base_dir)
+
 		if tutorials[tutorial]['url'].startswith('file'):
 			path = tutorials[tutorial]['url'][6:]
 			try:
@@ -224,9 +223,6 @@ def main():
 			os.system('git clone "%s" "%s"' %
 					  (tutorials[tutorial]['url'], tutorial_dir))
 		sys.stdout.write("Tutorial files installed in %s.\n" % tutorial_dir)
-	else:
-		parser.print_help()
-		return 1
 
 if __name__ == '__main__':
-	sys.exit(main())
+	sys.exit(main(sys.argv[1:]))
