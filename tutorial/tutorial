@@ -133,7 +133,7 @@ def main():
 		try:
 			git = __import__('git')
 		except ImportError:
-			print 'no such luck'
+			# oh well, we'll use the command line fallback
 			pass
 
 	config = connect_info()
