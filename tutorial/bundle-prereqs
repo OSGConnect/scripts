@@ -23,6 +23,8 @@ mkdir -p "$base/$libpy"
 	tar xzf gitdb-0.5.4.tar.gz
 	tar xzf GitPython-0.3.2.RC1.tar.gz
 
+	export PYTHONPATH=..
+	wget https://bootstrap.pypa.io/ez_setup.py &&
 	(cd smmap-0.8.2 &&
 	 python setup.py build --compiler /bin/false &&
 	 cp -pr smmap "$base/$libpy") &&
