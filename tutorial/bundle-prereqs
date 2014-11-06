@@ -1,0 +1,40 @@
+#!/bin/sh
+# 
+# Download GitPython and its prerequisites.
+# Build them as pure Python (no C acceleration).
+# Install them to a designated place.
+# Delete the build directory if successful.
+# 
+
+base=$(cd "$1"; pwd)
+libpy=$(python -c 'import sys; print "lib/python%d.%d" % sys.version_info[:2]')
+
+mkdir -p "$base/$libpy"
+(
+	mkdir _build
+	cd _build
+	wget https://pypi.python.org/packages/source/G/GitPython/GitPython-0.3.2.RC1.tar.gz
+	wget https://pypi.python.org/packages/source/g/gitdb/gitdb-0.5.4.tar.gz
+	wget https://pypi.python.org/packages/source/a/async/async-0.6.1.tar.gz
+	wget https://pypi.python.org/packages/source/s/smmap/smmap-0.8.2.tar.gz
+
+	tar xzf smmap-0.8.2.tar.gz
+	tar xzf async-0.6.1.tar.gz
+	tar xzf gitdb-0.5.4.tar.gz
+	tar xzf GitPython-0.3.2.RC1.tar.gz
+
+	(cd smmap-0.8.2 &&
+	 python setup.py build --compiler /bin/false &&
+	 cp -pr smmap "$base/$libpy") &&
+	(cd async-0.6.1 &&
+	 python setup.py build --compiler /bin/false &&
+	 mkdir "$base/$libpy/async" &&
+	 cp -pr . "$base/$libpy/async") &&
+	(cd gitdb-0.5.4 &&
+	 python setup.py build --compiler /bin/false &&
+	 cp -pr gitdb "$base/$libpy") &&
+	(cd GitPython-0.3.2.RC1 &&
+	 python setup.py build --compiler /bin/false &&
+	 cp -pr git "$base/$libpy")
+) &&
+rm -rf _build
