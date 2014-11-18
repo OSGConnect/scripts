@@ -8,221 +8,225 @@ import os
 import shutil
 import ConfigParser
 
-try:
-	import git
-except ImportError:
-	git = None
 
 # We may augment this in runtime
 ConfigFiles = ['/etc/ciconnect/config.ini']
 
-class mutableobject(object): pass
+
+class MutableObject(object):
+    pass
+
 
 def get_tutorial_dir(tutorial):
-	"""
-	Find first unused tutorial directory
-	"""
-	if not tutorial.startswith('tutorial-'):
-		tutorial = 'tutorial-' + tutorial
-	base_dir = os.path.join(".", tutorial)
-	trial_dir = base_dir
-	postfix = 0
-	while os.path.exists(trial_dir):
-		postfix += 1
-		trial_dir = "%s.%d" % (base_dir, postfix)
-	return base_dir, trial_dir
+    """
+    Find first unused tutorial directory
+    """
+    if not tutorial.startswith('tutorial-'):
+        tutorial = 'tutorial-' + tutorial
+    base_dir = os.path.join(".", tutorial)
+    trial_dir = base_dir
+    postfix = 0
+    while os.path.exists(trial_dir):
+        postfix += 1
+        trial_dir = "%s.%d" % (base_dir, postfix)
+    return base_dir, trial_dir
+
 
 def get_tutorials(config):
-	"""
-	Use github api to get a list of tutorials currently available
-	"""
-	tutorials = {}
+    """
+    Use github api to get a list of tutorials currently available
+    """
+    tutorials = {}
 
-	for org in config.github_orgs:
-		try:
-			github_page = urllib2.urlopen("https://api.github.com/orgs/%s/repos" % org)
-		except urllib2.HTTPError:
-			continue
-		repos = json.load(github_page)
-		github_page.close()
-		for repo in repos:
-			if not repo['name'].startswith('tutorial-'):
-				continue
-			name = repo['name'].replace('tutorial-', '')
-			burl = repo['branches_url'].replace('{/branch}', '')
-			tutorials[name] = {'description': repo['description'],
-			                   'url': repo['git_url'],
-			                   'branches_url': burl,
-			}
+    for org in config.github_orgs:
+        try:
+            github_page = urllib2.urlopen("https://api.github.com/orgs/%s/repos" % org)
+        except urllib2.HTTPError:
+            continue
+        repos = json.load(github_page)
+        github_page.close()
+        for repo in repos:
+            if not repo['name'].startswith('tutorial-'):
+                continue
+            name = repo['name'].replace('tutorial-', '')
+            burl = repo['branches_url'].replace('{/branch}', '')
+            tutorials[name] = {'description': repo['description'],
+                               'url': repo['git_url'],
+                               'branches_url': burl,
+            }
 
-    # N.B. placement means that local has precedence
-	for path in config.localpaths:
-		path = os.path.join(path, config.branding)
-		if not os.path.exists(path):
-			continue
-		for name in os.listdir(path):
-			tut_location = os.path.join(path, name)
-			if not os.path.isdir(tut_location):
-				continue
-			try:
-				info = open(os.path.join(tut_location, '.info'), 'r').readline().strip()
-			except IOError:
-				info = '???'
-			tutorials[name] = {'description': info,
-							   'url': "file://{0}".format(tut_location)}
+            # N.B. placement means that local has precedence
+    for path in config.localpaths:
+        path = os.path.join(path, config.branding)
+        if not os.path.exists(path):
+            continue
+        for name in os.listdir(path):
+            tut_location = os.path.join(path, name)
+            if not os.path.isdir(tut_location):
+                continue
+            try:
+                info = open(os.path.join(tut_location, '.info'), 'r').readline().strip()
+            except IOError:
+                info = '???'
+            tutorials[name] = {'description': info,
+                               'url': "file://{0}".format(tut_location)}
 
-	return tutorials
+    return tutorials
+
 
 def tutorial_branches(config, url):
-	"""
-	Use github api to get all branches of a tutorial repo
-	"""
+    """
+    Use github api to get all branches of a tutorial repo
+    """
 
-	try:
-		jsontxt = urllib2.urlopen(url)
-	except urllib2.HTTPError:
-		return []
-	branches = json.load(jsontxt)
-	jsontxt.close()
-	return [b['name'] for b in branches]
+    try:
+        jsontxt = urllib2.urlopen(url)
+    except urllib2.HTTPError:
+        return []
+    branches = json.load(jsontxt)
+    jsontxt.close()
+    return [b['name'] for b in branches]
+
 
 def connect_info():
-	"""
-	Get connect details from connect script
-	"""
+    """
+    Get connect details from connect script
+    """
 
-	config = ConfigParser.RawConfigParser()
-	for fn in ConfigFiles:
-		config.read(fn)
-	simple = mutableobject()
-	simple.branding = ''
-	simple.github_orgs = ['ci-connect', 'osgconnect']
-	simple.localpaths = []
+    config = ConfigParser.RawConfigParser()
+    for fn in ConfigFiles:
+        config.read(fn)
+    simple = MutableObject()
+    simple.branding = ''
+    simple.github_orgs = ['ci-connect', 'osgconnect']
+    simple.localpaths = []
 
-	if config.has_section('connect'):
-		setattr(simple, 'branding', config.get('connect', 'brand'))
+    if config.has_section('connect'):
+        setattr(simple, 'branding', config.get('connect', 'brand'))
 
-	# lists
-	for opt in ('localpaths', 'github_orgs'):
-		if config.has_option('tutorial', opt):
-			setattr(simple, opt, [x.strip() for x in config.get('tutorial', opt).split(',')])
+    # lists
+    for opt in ('localpaths', 'github_orgs'):
+        if config.has_option('tutorial', opt):
+            setattr(simple, opt, [x.strip() for x in config.get('tutorial', opt).split(',')])
 
-	# strings
-	for opt in ():
-		if config.has_option('tutorial', opt):
-			setattr(simple, opt, config.get('tutorial', opt))
+    # strings
+    for opt in ():
+        if config.has_option('tutorial', opt):
+            setattr(simple, opt, config.get('tutorial', opt))
 
-	return simple
+    return simple
+
 
 def main(args):
-	"""
-	Run script and try to get and install correct tutorial files
-	"""
+    """
+    Run script and try to get and install correct tutorial files
+    """
 
-	# Augment ConfigFiles if we can
-	base = os.path.dirname(sys.argv[0])
-	if base.endswith('/bin'):
-		base = os.path.dirname(base)
-	ConfigFiles.append(os.path.join(base, 'ciconnect.ini'))
-	ConfigFiles.append(os.path.join(base, 'etc', 'ciconnect.ini'))
+    # Augment ConfigFiles if we can
+    base = os.path.dirname(sys.argv[0])
+    if base.endswith('/bin'):
+        base = os.path.dirname(base)
+    ConfigFiles.append(os.path.join(base, 'ciconnect.ini'))
+    ConfigFiles.append(os.path.join(base, 'etc', 'ciconnect.ini'))
 
-	global git
-	if git is None:
-		dir = 'python%d.%d' % (sys.version_info.major, sys.version_info.minor)
-		sys.path.insert(0, os.path.join(base, 'lib', dir))
-		try:
-			git = __import__('git')
-		except ImportError:
-			# oh well, we'll use the command line fallback
-			pass
+    global git
+    if git is None:
+        dir = 'python%d.%d' % (sys.version_info.major, sys.version_info.minor)
+        sys.path.insert(0, os.path.join(base, 'lib', dir))
+        try:
+            git = __import__('git')
+        except ImportError:
+            # oh well, we'll use the command line fallback
+            pass
 
-	config = connect_info()
+    config = connect_info()
 
-	def usage(fp=sys.stderr):
-		p = os.path.basename(sys.argv[0])
-		print >>fp, 'usage: %s list                 - show available tutorials' % p
-		print >>fp, '       %s info <tutorial-name> - show details of a tutorial' % p
-		print >>fp, '       %s <tutorial-name>      - set up a tutorial' % p
-		return 2
+    def usage(fp=sys.stderr):
+        p = os.path.basename(sys.argv[0])
+        print >> fp, 'usage: %s list                 - show available tutorials' % p
+        print >> fp, '       %s info <tutorial-name> - show details of a tutorial' % p
+        print >> fp, '       %s <tutorial-name>      - set up a tutorial' % p
+        return 2
 
-	def listtutorials():
-		longest = max([len(name) for name in tutorials])
-		longest += 2
-		for tutorial in sorted(tutorials.keys()):
-			description = tutorials[tutorial]['description']
-			dots = '.' * (longest - len(tutorial))
-			sys.stdout.write("%s %s %s\n" % (tutorial, dots, description))
-		sys.stdout.write('\n')
-		sys.stdout.write('Enter "tutorial name-of-tutorial" to clone and try out a tutorial.\n')
-		return 0
+    def listtutorials():
+        longest = max([len(name) for name in tutorials])
+        longest += 2
+        for tutorial in sorted(tutorials.keys()):
+            description = tutorials[tutorial]['description']
+            dots = '.' * (longest - len(tutorial))
+            sys.stdout.write("%s %s %s\n" % (tutorial, dots, description))
+        sys.stdout.write('\n')
+        sys.stdout.write('Enter "tutorial name-of-tutorial" to clone and try out a tutorial.\n')
+        return 0
 
-	if not args:
-		usage(fp=sys.stdout)
-		print
-		args = ('list',)
+    if not args:
+        usage(fp=sys.stdout)
+        print
+        args = ('list',)
 
-	args = list(args)
-	cmd = args.pop(0)
+    args = list(args)
+    cmd = args.pop(0)
 
-	if cmd == 'list':
-		tutorials = get_tutorials(config)
-		sys.stdout.write("Currently available tutorials: \n")
-		listtutorials()
-		return 0
+    if cmd == 'list':
+        tutorials = get_tutorials(config)
+        sys.stdout.write("Currently available tutorials: \n")
+        listtutorials()
+        return 0
 
-	# provide info on a given tutorial
-	if cmd == 'info':
-		tutorials = get_tutorials(config)
-		for t in args:
-			if t not in tutorials:
-				sys.stderr.write("Tutorial %s not found. Available tutorials are:\n" % tutorial)
-				listtutorials()
-				return 10
+    # provide info on a given tutorial
+    if cmd == 'info':
+        tutorials = get_tutorials(config)
+        for t in args:
+            if t not in tutorials:
+                sys.stderr.write("Tutorial %s not found. Available tutorials are:\n" % tutorial)
+                listtutorials()
+                return 10
 
-		for t in args:
-			print 'Tutorial %s:' % t
-			print tutorials[t]['description']
-		return 0
+        for t in args:
+            print 'Tutorial %s:' % t
+            print tutorials[t]['description']
+        return 0
 
-	# install tutorial
-	else:
-		tutorial = cmd
-		tutorials = get_tutorials(config)
-		if tutorial not in tutorials:
-			sys.stderr.write("Tutorial %s not found. Available tutorials are:\n" % tutorial)
-			listtutorials()
-			return 20
+    # install tutorial
+    else:
+        tutorial = cmd
+        tutorials = get_tutorials(config)
+        if tutorial not in tutorials:
+            sys.stderr.write("Tutorial %s not found. Available tutorials are:\n" % tutorial)
+            listtutorials()
+            return 20
 
-		base_dir, tutorial_dir = get_tutorial_dir(tutorial)
-		branches = tutorial_branches(config, tutorials[tutorial]['branches_url'])
-		#print branches
-		branch = None
-		if config.branding in branches:
-			branch = config.branding
-		if branch:
-			sys.stdout.write('Installing %s (%s)...\n' % (tutorial, branch))
-		else:
-			sys.stdout.write('Installing %s (master)...\n' % tutorial)
-		if os.path.exists(base_dir):
-			sys.stdout.write("Directory %s exists! " % base_dir)
+        base_dir, tutorial_dir = get_tutorial_dir(tutorial)
+        branches = tutorial_branches(config, tutorials[tutorial]['branches_url'])
+        # print branches
+        branch = None
+        if config.branding in branches:
+            branch = config.branding
+        if branch:
+            sys.stdout.write('Installing %s (%s)...\n' % (tutorial, branch))
+        else:
+            sys.stdout.write('Installing %s (master)...\n' % tutorial)
+        if os.path.exists(base_dir):
+            sys.stdout.write("Directory %s exists! " % base_dir)
 
-		if tutorials[tutorial]['url'].startswith('file'):
-			path = tutorials[tutorial]['url'][6:]
-			try:
-				shutil.copytree(path, tutorial_dir)
-			except shutil.Error:
-				pass # ?!#
-		elif git and branch:
-			repo = git.Repo.clone_from(tutorials[tutorial]['url'], tutorial_dir, b=branch)
-		elif git:
-			repo = git.Repo.clone_from(tutorials[tutorial]['url'], tutorial_dir)
-		elif branch:
-			os.system('git clone -b "%s" "%s" "%s"' %
-					  (branch, tutorials[tutorial]['url'], tutorial_dir))
-		else:
-			os.system('git clone "%s" "%s"' %
-					  (tutorials[tutorial]['url'], tutorial_dir))
-		sys.stdout.write("Tutorial files installed in %s.\n" % tutorial_dir)
+        if tutorials[tutorial]['url'].startswith('file'):
+            path = tutorials[tutorial]['url'][6:]
+            try:
+                shutil.copytree(path, tutorial_dir)
+            except shutil.Error:
+                pass  # ?!#
+        elif git and branch:
+            repo = git.Repo.clone_from(tutorials[tutorial]['url'], tutorial_dir, b=branch)
+        elif git:
+            repo = git.Repo.clone_from(tutorials[tutorial]['url'], tutorial_dir)
+        elif branch:
+            os.system('git clone -b "%s" "%s" "%s"' %
+                      (branch, tutorials[tutorial]['url'], tutorial_dir))
+        else:
+            os.system('git clone "%s" "%s"' %
+                      (tutorials[tutorial]['url'], tutorial_dir))
+        sys.stdout.write("Tutorial files installed in %s.\n" % tutorial_dir)
+
 
 if __name__ == '__main__':
-	sys.exit(main(sys.argv[1:]))
+    sys.exit(main(sys.argv[1:]))
