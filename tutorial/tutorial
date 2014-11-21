@@ -2,7 +2,7 @@
 
 import json
 import urllib2
-import argparse
+import tarfile
 import sys
 import os
 import shutil
@@ -16,6 +16,52 @@ ConfigFiles = ['/etc/ciconnect/config.ini']
 class MutableObject(object):
     pass
 
+
+def get_repo(repo_url, location, branch="master"):
+    """
+    Given a github repo url, download the appropriate tarball and extract
+
+    :param repo_url: url to github repository
+    :param location: path to place repo contents in
+    :param branch:   branch from repo to grab, defaults to "master"
+
+    :return: path to extracted directory, returns None if an error occurs
+    """
+    tarball_url = "{0}/tarball/{1}".format(repo_url, branch)
+    try:
+        file_obj = urllib2.urlopen(tarball_url)
+        extract_path = extract_path(file_obj, location)
+        return extract_path
+    except urllib2.URLError:
+        sys.stderr.write("Can't download files from github")
+        return None
+
+
+
+def extract_tarfile(file_object, location=None):
+    """
+    Extract a specified tarball to in a given directory
+
+    :type file_object: file object
+    :type location: str
+    :param tarball: location of tarball file
+    :param location: path where tarball should be extracted,
+                    defaults to current directory
+    :return: path to directory extracted from tarball
+    """
+    tarball_obj = tarfile.open(fileobj=file_object)
+    cur_dir = os.getcwd()
+    if location is not None:
+        os.chdir(location)
+        extract_path = os.path.join(location,
+                                    tarball_obj.getmembers()[0].name)
+    else:
+        extract_path = os.path.join(cur_dir,
+                                    tarball_obj.getmembers()[0].name)
+    for item in tarball_obj:
+        tarball_obj.extract(item)
+    os.chdir(cur_dir)
+    return extract_path
 
 def get_tutorial_dir(tutorial):
     """
@@ -53,7 +99,7 @@ def get_tutorials(config):
             tutorials[name] = {'description': repo['description'],
                                'url': repo['git_url'],
                                'branches_url': burl,
-            }
+                              }
 
             # N.B. placement means that local has precedence
     for path in config.localpaths:
@@ -128,16 +174,6 @@ def main(args):
         base = os.path.dirname(base)
     ConfigFiles.append(os.path.join(base, 'ciconnect.ini'))
     ConfigFiles.append(os.path.join(base, 'etc', 'ciconnect.ini'))
-
-    global git
-    if git is None:
-        dir = 'python%d.%d' % (sys.version_info.major, sys.version_info.minor)
-        sys.path.insert(0, os.path.join(base, 'lib', dir))
-        try:
-            git = __import__('git')
-        except ImportError:
-            # oh well, we'll use the command line fallback
-            pass
 
     config = connect_info()
 
@@ -214,17 +250,16 @@ def main(args):
             try:
                 shutil.copytree(path, tutorial_dir)
             except shutil.Error:
-                pass  # ?!#
-        elif git and branch:
-            repo = git.Repo.clone_from(tutorials[tutorial]['url'], tutorial_dir, b=branch)
-        elif git:
-            repo = git.Repo.clone_from(tutorials[tutorial]['url'], tutorial_dir)
+                sys.stderr.write("Can't write tutorial to {0}\n".format(tutorial_dir))
+                sys.exit(1)
         elif branch:
-            os.system('git clone -b "%s" "%s" "%s"' %
-                      (branch, tutorials[tutorial]['url'], tutorial_dir))
+            if get_repo(tutorials[tutorial]['url'],
+                        tutorial_dir,
+                        branch=branch) is None:
+                return 1
         else:
-            os.system('git clone "%s" "%s"' %
-                      (tutorials[tutorial]['url'], tutorial_dir))
+            if get_repo(tutorials[tutorial]['url'], tutorial_dir) is None:
+                return 1
         sys.stdout.write("Tutorial files installed in %s.\n" % tutorial_dir)
 
 
