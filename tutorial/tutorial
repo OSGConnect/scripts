@@ -125,7 +125,7 @@ def tutorial_branches(config, url):
     """
     Use github api to get all branches of a tutorial repo
     """
-    if url.startswith('file://') or url = '':
+    if url.startswith('file://') or url == '':
         # no branches for file urls or missing urls
         return []
     try:
