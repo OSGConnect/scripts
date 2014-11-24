@@ -55,7 +55,7 @@ def extract_tarfile(file_object, location=None):
     if location is not None:
         (base_path, tutorial_dir) = os.path.split(location)
         os.chdir(base_path)
-        extract_dir = os.path.join(location,
+        extract_dir = os.path.join(base_path,
                                    tarball_obj.getmembers()[0].name)
     else:
         extract_dir = os.path.join(cur_dir,
