@@ -7,7 +7,7 @@ import sys
 import os
 import shutil
 import ConfigParser
-
+import tempfile
 
 # We may augment this in runtime
 ConfigFiles = ['/etc/ciconnect/config.ini']
@@ -29,13 +29,14 @@ def get_repo(repo_url, location, branch="master"):
     """
     tarball_url = "{0}/tarball/{1}".format(repo_url, branch)
     try:
-        file_obj = urllib2.urlopen(tarball_url)
-        extract_path = extract_path(file_obj, location)
+        url_obj = urllib2.urlopen(tarball_url)
+        temp_obj = tempfile.TemporaryFile()
+        shutil.copyfileobj(url_obj, temp_obj)
+        extract_path = extract_tarfile(temp_obj, location)
         return extract_path
     except urllib2.URLError:
         sys.stderr.write("Can't download files from github\n")
         return None
-
 
 
 def extract_tarfile(file_object, location=None):
@@ -44,24 +45,28 @@ def extract_tarfile(file_object, location=None):
 
     :type file_object: file object
     :type location: str
-    :param tarball: location of tarball file
     :param location: path where tarball should be extracted,
                     defaults to current directory
     :return: path to directory extracted from tarball
     """
+    file_object.seek(0)  # need to go to beginning for tarfile
     tarball_obj = tarfile.open(fileobj=file_object)
     cur_dir = os.getcwd()
     if location is not None:
-        os.chdir(location)
-        extract_path = os.path.join(location,
-                                    tarball_obj.getmembers()[0].name)
+        (base_path, tutorial_dir) = os.path.split(location)
+        os.chdir(base_path)
+        extract_dir = os.path.join(location,
+                                   tarball_obj.getmembers()[0].name)
     else:
-        extract_path = os.path.join(cur_dir,
-                                    tarball_obj.getmembers()[0].name)
+        extract_dir = os.path.join(cur_dir,
+                                   tarball_obj.getmembers()[0].name)
     for item in tarball_obj:
         tarball_obj.extract(item)
+    if location is not None:
+        os.rename(extract_dir, tutorial_dir)
+        extract_dir = os.path.join(location)
     os.chdir(cur_dir)
-    return extract_path
+    return extract_dir
 
 
 def get_tutorial_dir(tutorial):
@@ -99,8 +104,7 @@ def get_tutorials(config):
             burl = repo['branches_url'].replace('{/branch}', '')
             tutorials[name] = {'description': repo['description'],
                                'url': repo['url'],
-                               'branches_url': burl,
-                              }
+                               'branches_url': burl}
 
             # N.B. placement means that local has precedence
     for path in config.localpaths:
@@ -117,7 +121,7 @@ def get_tutorials(config):
                 info = '???'
             tutorials[name] = {'description': info,
                                'url': "file://{0}".format(tut_location),
-                               'branches_url': ""} # need empty branches url for later
+                               'branches_url': ""}  # need empty branches url for later
 
     return tutorials
 
@@ -218,7 +222,7 @@ def main(args):
         tutorials = get_tutorials(config)
         for t in args:
             if t not in tutorials:
-                sys.stderr.write("Tutorial %s not found. Available tutorials are:\n" % tutorial)
+                sys.stderr.write("Tutorial %s not found. Available tutorials are:\n" % t)
                 listtutorials()
                 return 10
 
