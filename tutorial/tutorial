@@ -33,7 +33,7 @@ def get_repo(repo_url, location, branch="master"):
         extract_path = extract_path(file_obj, location)
         return extract_path
     except urllib2.URLError:
-        sys.stderr.write("Can't download files from github")
+        sys.stderr.write("Can't download files from github\n")
         return None
 
 
@@ -62,6 +62,7 @@ def extract_tarfile(file_object, location=None):
         tarball_obj.extract(item)
     os.chdir(cur_dir)
     return extract_path
+
 
 def get_tutorial_dir(tutorial):
     """
@@ -97,7 +98,7 @@ def get_tutorials(config):
             name = repo['name'].replace('tutorial-', '')
             burl = repo['branches_url'].replace('{/branch}', '')
             tutorials[name] = {'description': repo['description'],
-                               'url': repo['git_url'],
+                               'url': repo['url'],
                                'branches_url': burl,
                               }
 
