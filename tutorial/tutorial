@@ -115,7 +115,8 @@ def get_tutorials(config):
             except IOError:
                 info = '???'
             tutorials[name] = {'description': info,
-                               'url': "file://{0}".format(tut_location)}
+                               'url': "file://{0}".format(tut_location),
+                               'branches_url': ""} # need empty branches url for later
 
     return tutorials
 
