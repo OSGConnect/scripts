@@ -191,6 +191,13 @@ def connect_info(config):
     return simple
 
 
+def initialize(dir):
+    sys.stdout.write('Running setup in %s...\n' % dir)
+    if not os.path.exists(os.path.join(dir, 'setup')):
+        return
+    os.system('cd "%s" && ./setup || sh ./setup' % dir)
+
+
 def main(args):
     """
     Run script and try to get and install correct tutorial files
@@ -312,6 +319,8 @@ def main(args):
                 if get_repo(tutorials[tutorial]['url'], tutorial_dir) is None:
                     return 1
             sys.stdout.write("Tutorial files installed in %s.\n" % tutorial_dir)
+
+            initialize(tutorial_dir)
 
 
 if __name__ == '__main__':
