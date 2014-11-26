@@ -10,6 +10,7 @@ import ConfigParser
 import tempfile
 import StringIO
 import re
+import getopt
 
 # We may augment this in runtime
 ConfigFiles = ['/etc/ciconnect/config.ini']
@@ -129,7 +130,7 @@ def get_tutorials(config):
                                'url': repo['url'],
                                'branches_url': burl}
 
-            # N.B. placement means that local has precedence
+    # N.B. placement means that local has precedence
     for path in config.localpaths:
         path = os.path.join(path, config.branding)
         if not os.path.exists(path):
@@ -165,15 +166,11 @@ def tutorial_branches(config, url):
     return [b['name'] for b in branches]
 
 
-def connect_info():
+def connect_info(config):
     """
     Get connect details from connect script
     """
 
-    config = ConfigParser.RawConfigParser()
-    config.readfp(StringIO.StringIO(Defaults))
-    for fn in ConfigFiles:
-        config.read(fn)
     simple = mongodict()
     simple.branding = ''
     simple.github_paths = []
@@ -206,7 +203,10 @@ def main(args):
     ConfigFiles.append(os.path.join(base, 'ciconnect.ini'))
     ConfigFiles.append(os.path.join(base, 'etc', 'ciconnect.ini'))
 
-    config = connect_info()
+    config = ConfigParser.RawConfigParser()
+    config.readfp(StringIO.StringIO(Defaults))
+    for fn in ConfigFiles:
+        config.read(fn)
 
     def usage(fp=sys.stderr):
         p = os.path.basename(sys.argv[0])
@@ -229,23 +229,39 @@ def main(args):
             sys.stdout.write('No tutorials currently available.\n')
         return 0
 
+    try:
+        opts, args = getopt.getopt(args, 'C:', ['collection='])
+    except getopt.GetoptError, e:
+        sys.stderr.write('error: %s\n' % str(e))
+        return 2
+
+    if 'TUTORIAL_COLLECTION' in os.environ:
+        config.set('tutorial', 'github-paths',
+                   os.environ['TUTORIAL_COLLECTION'])
+
+    for opt, arg in opts:
+        if opt in ('-C', '--collection'):
+            config.set('tutorial', 'github-paths', arg)
+
     if not args:
         usage(fp=sys.stdout)
         print
         args = ('list',)
 
-    args = list(args)
-    cmd = args.pop(0)
+    sconfig = connect_info(config)
+
+    cmd = args[0]
+    args = args[1:]
 
     if cmd == 'list':
-        tutorials = get_tutorials(config)
+        tutorials = get_tutorials(sconfig)
         sys.stdout.write("Currently available tutorials: \n")
         listtutorials()
         return 0
 
     # provide info on a given tutorial
     if cmd == 'info':
-        tutorials = get_tutorials(config)
+        tutorials = get_tutorials(sconfig)
         for t in args:
             if t not in tutorials:
                 sys.stderr.write("Tutorial %s not found. Available tutorials are:\n" % t)
@@ -260,18 +276,18 @@ def main(args):
     # install tutorial
     else:
         tutorial = cmd
-        tutorials = get_tutorials(config)
+        tutorials = get_tutorials(sconfig)
         if tutorial not in tutorials:
             sys.stderr.write("Tutorial %s not found. Available tutorials are:\n" % tutorial)
             listtutorials()
             return 20
 
         base_dir, tutorial_dir = get_tutorial_dir(tutorial)
-        branches = tutorial_branches(config, tutorials[tutorial]['branches_url'])
+        branches = tutorial_branches(sconfig, tutorials[tutorial]['branches_url'])
         # print branches
         branch = None
-        if config.branding in branches:
-            branch = config.branding
+        if sconfig.branding in branches:
+            branch = sconfig.branding
         if branch:
             sys.stdout.write('Installing %s (%s)...\n' % (tutorial, branch))
         else:
