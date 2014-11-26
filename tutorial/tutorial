@@ -275,42 +275,43 @@ def main(args):
 
     # install tutorial
     else:
-        tutorial = cmd
         tutorials = get_tutorials(sconfig)
-        if tutorial not in tutorials:
-            sys.stderr.write("Tutorial %s not found. Available tutorials are:\n" % tutorial)
-            listtutorials()
-            return 20
 
-        base_dir, tutorial_dir = get_tutorial_dir(tutorial)
-        branches = tutorial_branches(sconfig, tutorials[tutorial]['branches_url'])
-        # print branches
-        branch = None
-        if sconfig.branding in branches:
-            branch = sconfig.branding
-        if branch:
-            sys.stdout.write('Installing %s (%s)...\n' % (tutorial, branch))
-        else:
-            sys.stdout.write('Installing %s (master)...\n' % tutorial)
-        if os.path.exists(base_dir):
-            sys.stdout.write("Directory %s exists! " % base_dir)
+        for tutorial in [cmd] + args:
+            if tutorial not in tutorials:
+                sys.stderr.write("Tutorial %s not found. Available tutorials are:\n" % tutorial)
+                listtutorials()
+                return 20
 
-        if tutorials[tutorial]['url'].startswith('file'):
-            path = tutorials[tutorial]['url'][6:]
-            try:
-                shutil.copytree(path, tutorial_dir)
-            except shutil.Error:
-                sys.stderr.write("Can't write tutorial to {0}\n".format(tutorial_dir))
-                sys.exit(1)
-        elif branch:
-            if get_repo(tutorials[tutorial]['url'],
-                        tutorial_dir,
-                        branch=branch) is None:
-                return 1
-        else:
-            if get_repo(tutorials[tutorial]['url'], tutorial_dir) is None:
-                return 1
-        sys.stdout.write("Tutorial files installed in %s.\n" % tutorial_dir)
+            base_dir, tutorial_dir = get_tutorial_dir(tutorial)
+            branches = tutorial_branches(sconfig, tutorials[tutorial]['branches_url'])
+            # print branches
+            branch = None
+            if sconfig.branding in branches:
+                branch = sconfig.branding
+            if branch:
+                sys.stdout.write('Installing %s (%s)...\n' % (tutorial, branch))
+            else:
+                sys.stdout.write('Installing %s (master)...\n' % tutorial)
+            if os.path.exists(base_dir):
+                sys.stdout.write("Directory %s exists! " % base_dir)
+
+            if tutorials[tutorial]['url'].startswith('file'):
+                path = tutorials[tutorial]['url'][6:]
+                try:
+                    shutil.copytree(path, tutorial_dir)
+                except shutil.Error:
+                    sys.stderr.write("Can't write tutorial to {0}\n".format(tutorial_dir))
+                    sys.exit(1)
+            elif branch:
+                if get_repo(tutorials[tutorial]['url'],
+                            tutorial_dir,
+                            branch=branch) is None:
+                    return 1
+            else:
+                if get_repo(tutorials[tutorial]['url'], tutorial_dir) is None:
+                    return 1
+            sys.stdout.write("Tutorial files installed in %s.\n" % tutorial_dir)
 
 
 if __name__ == '__main__':
