@@ -8,17 +8,28 @@ import os
 import shutil
 import ConfigParser
 import tempfile
+import StringIO
+import re
 
 # We may augment this in runtime
 ConfigFiles = ['/etc/ciconnect/config.ini']
 
+# Default configuration
+Defaults = '''
+[connect]
+brand = osg
+
+[tutorial]
+localpaths = /stash/tutorials
+github-paths = CI-Connect/tutorial-, OSGConnect/tutorial-
+'''
 
 class mongodict(dict):
     def __setattr__(self, key, value):
-		return self.__setitem__(key, value)
+        return self.__setitem__(key, value)
 
     def __getattr__(self, key):
-		return self.__getitem__(key)
+        return self.__getitem__(key)
 
 
 def get_repo(repo_url, location, branch="master"):
@@ -94,7 +105,15 @@ def get_tutorials(config):
     """
     tutorials = {}
 
-    for org in config.github_orgs:
+    for path in config.github_paths:
+        if '/' in path:
+            # separates org from repo name pattern
+            org, pat = path.split('/', 1)
+        else:
+            # For now, pat is just a prefix.  We can make it a fnmatch
+            # or re matching expr if needed.
+            org, pat = path, 'tutorial-'
+
         try:
             github_page = urllib2.urlopen("https://api.github.com/orgs/%s/repos" % org)
         except urllib2.HTTPError:
@@ -102,9 +121,9 @@ def get_tutorials(config):
         repos = json.load(github_page)
         github_page.close()
         for repo in repos:
-            if not repo['name'].startswith('tutorial-'):
+            if not repo['name'].startswith(pat):
                 continue
-            name = repo['name'].replace('tutorial-', '')
+            name = repo['name'].replace(pat, '')
             burl = repo['branches_url'].replace('{/branch}', '')
             tutorials[name] = {'description': repo['description'],
                                'url': repo['url'],
@@ -152,25 +171,25 @@ def connect_info():
     """
 
     config = ConfigParser.RawConfigParser()
+    config.readfp(StringIO.StringIO(Defaults))
     for fn in ConfigFiles:
         config.read(fn)
     simple = mongodict()
     simple.branding = ''
-    simple.github_orgs = ['ci-connect', 'osgconnect']
+    simple.github_paths = []
     simple.localpaths = []
 
     if config.has_section('connect'):
         simple.branding = config.get('connect', 'brand')
 
     # lists
-    for opt in ('localpaths', 'github_orgs'):
-        if config.has_option('tutorial', opt):
-            simple[opt] = [x.strip() for x in config.get('tutorial', opt).split(',')]
+    if config.has_option('tutorial', 'localpaths'):
+        simple.localpaths = [x.strip()
+                             for x in config.get('tutorial', 'localpaths').split(',')]
 
-    # strings
-    for opt in ():
-        if config.has_option('tutorial', opt):
-            simple[opt] = config.get('tutorial', opt)
+    if config.has_option('tutorial', 'github-paths'):
+        simple.github_paths = [x.strip()
+                               for x in config.get('tutorial', 'github-paths').split(',')]
 
     return simple
 
@@ -197,14 +216,17 @@ def main(args):
         return 2
 
     def listtutorials():
-        longest = max([len(name) for name in tutorials])
-        longest += 2
-        for tutorial in sorted(tutorials.keys()):
-            description = tutorials[tutorial]['description']
-            dots = '.' * (longest - len(tutorial))
-            sys.stdout.write("%s %s %s\n" % (tutorial, dots, description))
-        sys.stdout.write('\n')
-        sys.stdout.write('Enter "tutorial name-of-tutorial" to clone and try out a tutorial.\n')
+        if tutorials:
+            longest = max([len(name) for name in tutorials])
+            longest += 2
+            for tutorial in sorted(tutorials.keys()):
+                description = tutorials[tutorial]['description']
+                dots = '.' * (longest - len(tutorial))
+                sys.stdout.write("%s %s %s\n" % (tutorial, dots, description))
+            sys.stdout.write('\n')
+            sys.stdout.write('Enter "tutorial name-of-tutorial" to clone and try out a tutorial.\n')
+        else:
+            sys.stdout.write('No tutorials currently available.\n')
         return 0
 
     if not args:
