@@ -13,8 +13,12 @@ import tempfile
 ConfigFiles = ['/etc/ciconnect/config.ini']
 
 
-class MutableObject(object):
-    pass
+class mongodict(dict):
+    def __setattr__(self, key, value):
+		return self.__setitem__(key, value)
+
+    def __getattr__(self, key):
+		return self.__getitem__(key)
 
 
 def get_repo(repo_url, location, branch="master"):
@@ -150,23 +154,23 @@ def connect_info():
     config = ConfigParser.RawConfigParser()
     for fn in ConfigFiles:
         config.read(fn)
-    simple = MutableObject()
+    simple = mongodict()
     simple.branding = ''
     simple.github_orgs = ['ci-connect', 'osgconnect']
     simple.localpaths = []
 
     if config.has_section('connect'):
-        setattr(simple, 'branding', config.get('connect', 'brand'))
+        simple.branding = config.get('connect', 'brand')
 
     # lists
     for opt in ('localpaths', 'github_orgs'):
         if config.has_option('tutorial', opt):
-            setattr(simple, opt, [x.strip() for x in config.get('tutorial', opt).split(',')])
+            simple[opt] = [x.strip() for x in config.get('tutorial', opt).split(',')]
 
     # strings
     for opt in ():
         if config.has_option('tutorial', opt):
-            setattr(simple, opt, config.get('tutorial', opt))
+            simple[opt] = config.get('tutorial', opt)
 
     return simple
 
