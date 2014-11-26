@@ -22,7 +22,10 @@ brand = osg
 
 [tutorial]
 localpaths = /stash/tutorials
-github-paths = CI-Connect/tutorial-, OSGConnect/tutorial-
+github-paths = default
+
+[collections]
+default = CI-Connect/tutorial-, OSGConnect/tutorial-
 '''
 
 class mongodict(dict):
@@ -166,6 +169,16 @@ def tutorial_branches(config, url):
     return [b['name'] for b in branches]
 
 
+def get_collections(config, value):
+    results = []
+    for item in [x.strip() for x in value.split(',')]:
+        if config.has_option('collections', item):
+            results.extend(get_collections(config, config.get('collections', item)))
+        else:
+            results.append(item)
+    return results
+
+
 def connect_info(config):
     """
     Get connect details from connect script
@@ -185,8 +198,7 @@ def connect_info(config):
                              for x in config.get('tutorial', 'localpaths').split(',')]
 
     if config.has_option('tutorial', 'github-paths'):
-        simple.github_paths = [x.strip()
-                               for x in config.get('tutorial', 'github-paths').split(',')]
+        simple.github_paths = get_collections(config, config.get('tutorial', 'github-paths'))
 
     return simple
 
