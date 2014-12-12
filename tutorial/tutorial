@@ -28,6 +28,18 @@ github-paths = default
 default = CI-Connect/tutorial-, OSGConnect/tutorial-
 '''
 
+OAuthClient = {
+    'clientid': 'daf652bf17f603644de5',
+    'secret': '8041808c74efe3090359b9c353a9d87e3e1d6c8f',
+}
+
+def githuburl(path):
+    if '://' not in path:
+        path = 'https://api.github.com' + path
+    return path + \
+           '?client_id=' + OAuthClient['clientid'] + \
+           '&client_secret=' + OAuthClient['secret']
+
 class mongodict(dict):
     def __setattr__(self, key, value):
         return self.__setitem__(key, value)
@@ -46,7 +58,7 @@ def get_repo(repo_url, location, branch="master"):
 
     :return: path to extracted directory, returns None if an error occurs
     """
-    tarball_url = "{0}/tarball/{1}".format(repo_url, branch)
+    tarball_url = githuburl("{0}/tarball/{1}".format(repo_url, branch))
     try:
         url_obj = urllib2.urlopen(tarball_url)
         temp_obj = tempfile.TemporaryFile()
@@ -119,7 +131,7 @@ def get_tutorials(config):
             org, pat = path, 'tutorial-'
 
         try:
-            github_page = urllib2.urlopen("https://api.github.com/orgs/%s/repos" % org)
+            github_page = urllib2.urlopen(githuburl('/orgs/%s/repos' % org))
         except urllib2.HTTPError:
             continue
         repos = json.load(github_page)
