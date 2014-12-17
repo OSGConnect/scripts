@@ -48,7 +48,7 @@ class mongodict(dict):
         return self.__getitem__(key)
 
 
-def get_repo(repo_url, location, branch="master"):
+def get_repo(repo_url, location, branch="master", verbose=False):
     """
     Given a github repo url, download the appropriate tarball and extract
 
@@ -59,6 +59,8 @@ def get_repo(repo_url, location, branch="master"):
     :return: path to extracted directory, returns None if an error occurs
     """
     tarball_url = githuburl("{0}/tarball/{1}".format(repo_url, branch))
+    if verbose:
+        sys.stderr.write("Fetching tutorial from " + tarball_url + "\n")
     try:
         url_obj = urllib2.urlopen(tarball_url)
         temp_obj = tempfile.TemporaryFile()
@@ -309,6 +311,8 @@ def main(args):
         tutorials = get_tutorials(sconfig)
 
         for tutorial in [cmd] + args:
+            if tutorial.startswith('tutorial-'):
+                tutorial = tutorial[9:]
             if tutorial not in tutorials:
                 sys.stderr.write("Tutorial %s not found. Available tutorials are:\n" % tutorial)
                 listtutorials()
