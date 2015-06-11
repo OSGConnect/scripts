@@ -33,12 +33,12 @@ OAuthClient = {
     'secret': '8041808c74efe3090359b9c353a9d87e3e1d6c8f',
 }
 
-def githuburl(path):
+def githuburl(path, **params):
     if '://' not in path:
         path = 'https://api.github.com' + path
-    return path + \
-           '?client_id=' + OAuthClient['clientid'] + \
-           '&client_secret=' + OAuthClient['secret']
+    params['client_id'] = OAuthClient['clientid']
+    params['client_secret'] = OAuthClient['secret']
+    return path + '?' + '&'.join(['%s=%s' % item for item in params.items()])
 
 class mongodict(dict):
     def __setattr__(self, key, value):
@@ -132,20 +132,39 @@ def get_tutorials(config):
             # or re matching expr if needed.
             org, pat = path, 'tutorial-'
 
-        try:
-            github_page = urllib2.urlopen(githuburl('/orgs/%s/repos' % org))
-        except urllib2.HTTPError:
-            continue
-        repos = json.load(github_page)
-        github_page.close()
-        for repo in repos:
-            if not repo['name'].startswith(pat):
-                continue
-            name = repo['name'].replace(pat, '')
-            burl = repo['branches_url'].replace('{/branch}', '')
-            tutorials[name] = {'description': repo['description'],
-                               'url': repo['url'],
-                               'branches_url': burl}
+        rx = re.compile('<([^>]+)>; rel="([^"]+)",* *')
+
+        # need to retrieve paginated results
+        nexturi = githuburl('/orgs/%s/repos' % org, per_page=20)
+        while nexturi:
+            try:
+                github_page = urllib2.urlopen(nexturi)
+            except urllib2.HTTPError, e:
+                break
+
+            repos = json.load(github_page)
+            github_page.close()
+            for repo in repos:
+                if not repo['name'].startswith(pat):
+                    continue
+                name = repo['name'].replace(pat, '')
+                burl = repo['branches_url'].replace('{/branch}', '')
+                tutorials[name] = {'description': repo['description'],
+                                   'url': repo['url'],
+                                   'branches_url': burl}
+
+            # This is ridiculous: github requires you to parse
+            # a header like the following to get paged results metadata:
+            # Link: <https://api.github.com/organizations/7956953/repos?page=2>; rel="next", <https://api.github.com/organizations/7956953/repos?page=2>; rel="last"
+
+            nexturi = None
+            header = github_page.info().get('Link')
+            if not header:
+                break
+            for m in rx.finditer(header):
+                link, rel = m.groups()
+                if rel == 'next':
+                    nexturi = link
 
     # N.B. placement means that local has precedence
     for path in config.localpaths:
