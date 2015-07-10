@@ -11,6 +11,7 @@ import tempfile
 import StringIO
 import re
 import getopt
+import traceback
 
 # We may augment this in runtime
 ConfigFiles = ['/etc/ciconnect/config.ini']
@@ -19,6 +20,7 @@ ConfigFiles = ['/etc/ciconnect/config.ini']
 Defaults = '''
 [connect]
 brand = osg
+errorsto = root
 
 [tutorial]
 localpaths = /stash/tutorials
@@ -48,7 +50,42 @@ class mongodict(dict):
         return self.__getitem__(key)
 
 
-def get_repo(repo_url, location, branch="master", verbose=False):
+def send_exc(config):
+    exc = traceback.format_exc()
+
+    if os.path.exists('/usr/lib/sendmail'):
+        fp = os.popen('/usr/lib/sendmail -t 2>/dev/null', 'w')
+    elif os.path.exists('/usr/sbin/sendmail'):
+        fp = os.popen('/usr/sbin/sendmail -t 2>/dev/null', 'w')
+    else:
+        return False
+
+    import time
+    import pwd
+    import socket
+    import platform
+
+    rcpts = [x.strip() for x in config.get('connect', 'errorsto').split(',')]
+    ts = time.ctime()
+
+    msg = []
+    msg += ['To: ' + ', '.join(rcpts)]
+    msg += ['Subject: tutorial traceback']
+    msg += ['']
+    msg += ['Python: ' + sys.version]
+    msg += ['System: ' + str(platform.uname())]
+    msg += ['User: ' + pwd.getpwuid(os.getuid()).pw_name]
+    msg += ['Hostname: ' + socket.gethostname()]
+    msg += ['Timestamp: ' + ts]
+    msg += ['']
+    msg += [exc]
+
+    fp.write('\n'.join(msg))
+    fp.close()
+    return True
+
+
+def get_repo(config, repo_url, location, branch="master", verbose=False):
     """
     Given a github repo url, download the appropriate tarball and extract
 
@@ -67,9 +104,13 @@ def get_repo(repo_url, location, branch="master", verbose=False):
         shutil.copyfileobj(url_obj, temp_obj)
         extract_path = extract_tarfile(temp_obj, location)
         return extract_path
-    except urllib2.URLError:
-        sys.stderr.write("Can't download files from github\n")
-        return None
+    except Exception, e:
+        sys.stderr.write("Can't download files from github: %s\n" % str(e))
+        if send_exc(config):
+            sys.stderr.write("This error has been reported to system staff.\n")
+        else:
+            sys.stderr.write("Please report this error to your system staff.\n")
+            
 
 
 def extract_tarfile(file_object, location=None):
@@ -358,12 +399,12 @@ def main(args):
                     sys.stderr.write("Can't write tutorial to {0}\n".format(tutorial_dir))
                     sys.exit(1)
             elif branch:
-                if get_repo(tutorials[tutorial]['url'],
+                if get_repo(config, tutorials[tutorial]['url'],
                             tutorial_dir,
                             branch=branch) is None:
                     return 1
             else:
-                if get_repo(tutorials[tutorial]['url'], tutorial_dir) is None:
+                if get_repo(config, tutorials[tutorial]['url'], tutorial_dir) is None:
                     return 1
             sys.stdout.write("Tutorial files installed in %s.\n" % tutorial_dir)
 
