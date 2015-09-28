@@ -133,7 +133,7 @@ def extract_tarfile(file_object, location=None):
         os.chdir(base_path)
         # tarfile.extract doesn't appear to return an error if it can't
         # write, so let's proactively detect whether this is possible.
-        if not os.access('.', 'w'):
+        if not os.access('.', os.R_OK):
             sys.stderr.write('You might not have write access to this directory.\n')
         extract_dir = os.path.join(base_path,
                                    tarball_obj.getmembers()[0].name)
