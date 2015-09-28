@@ -30,6 +30,8 @@ github-paths = default
 default = CI-Connect/tutorial-, OSGConnect/tutorial-
 '''
 
+# GitHub limits API access for anonymous clients, so we'll authenticate
+# to this service account just to extend API limits.
 OAuthClient = {
     'clientid': 'daf652bf17f603644de5',
     'secret': '8041808c74efe3090359b9c353a9d87e3e1d6c8f',
@@ -129,16 +131,25 @@ def extract_tarfile(file_object, location=None):
     if location is not None:
         (base_path, tutorial_dir) = os.path.split(location)
         os.chdir(base_path)
+        # tarfile.extract doesn't appear to return an error if it can't
+        # write, so let's proactively detect whether this is possible.
+        if not os.access('.', 'w'):
+            sys.stderr.write('You might not have write access to this directory.\n')
         extract_dir = os.path.join(base_path,
                                    tarball_obj.getmembers()[0].name)
     else:
         extract_dir = os.path.join(cur_dir,
                                    tarball_obj.getmembers()[0].name)
-    for item in tarball_obj:
-        tarball_obj.extract(item)
+
+    tarball_obj.extractall()
+
     if location is not None:
-        os.rename(extract_dir, tutorial_dir)
-        extract_dir = os.path.join(location)
+        try:
+            os.rename(extract_dir, tutorial_dir)
+            extract_dir = os.path.join(location)
+        except:
+            pass
+
     os.chdir(cur_dir)
     return extract_dir
 
