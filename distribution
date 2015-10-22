@@ -394,11 +394,10 @@ sub checkValuesObjects {
 	# matching regexp passed in. either way, we were left with nothing.
 	if ($totalValues == 0) {
 		if ($totalObjects > 0) {
-			print STDERR "All input filtered! ";
+			print STDERR "Not enough unfiltered data to produce a histogram.\n";
 		} else {
-			print STDERR "No input! ";
+			print STDERR "Not enough data to produce a histogram.\n";
 		}
-		print STDERR "No histogram for you.\n";
 		exit 255;
 	}
 }
