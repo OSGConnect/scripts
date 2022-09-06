@@ -1,0 +1,78 @@
+## Project requirements (PEP 518, https://python-poetry.org/).
+
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0"]
+
+
+[tool.black]
+line-length = 96
+target-version = ["py38", "py39", "py310"]
+
+
+[tool.isort]
+line_length = 96
+profile = "black"
+
+
+[tool.mypy]
+explicit_package_bases = true
+namespace_packages = true
+
+check_untyped_defs = true
+strict_optional = true
+no_implicit_optional = true
+
+warn_no_return = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_ignores = true
+
+color_output = false
+pretty = true
+show_error_codes = true
+
+incremental = true
+cache_dir = ".mypy"
+sqlite_cache = true
+
+
+[tool.poetry]
+name = "osgconnect_scripts"
+version = "1.0.0rc1"
+description = "Scripts for the OSG Connect service"
+license = "Apache-2.0"
+authors = [
+    "Suchandra Thapa <sthapa@ci.uchicago.edu>",
+    "David Champion <dgc@uchicago.edu>",
+    "Brian Aydemir <brian.aydemir@gmail.com>",
+]
+repository = "https://github.com/OSGConnect/scripts"
+packages = [{ include = "osgconnect" }]
+
+
+[tool.poetry.scripts]
+tutorial = "osgconnect.scripts.tutorial:main"
+
+
+[tool.poetry.dependencies]
+python = "^3.8"
+
+
+[tool.poetry.dev-dependencies]
+bandit = "~1.7"
+black = "~22.6"
+docutils = "~0.19"
+isort = "~5.10"
+mypy = "~0.971"
+pre-commit = "~2.20"
+pylint = "~2.15"
+"ruamel.yaml.cmd" = "~0.5"
+safety = "~2.1"
+
+
+[tool.pylint.messages-control]
+max-line-length = 96
+disable = "invalid-name,missing-class-docstring,missing-function-docstring"
